@@ -93,10 +93,12 @@ document.getElementById("region").addEventListener("change", function() {
         detalle.style.display = "none";
         estadisticas.style.display = "none";
 
+
         if(seccion==="portada") portada.style.display="block";
         if(seccion==="agregar") agregarForm.style.display="block";
         if(seccion==="listado") listado.style.display="block";
         if(seccion==="estadisticas") estadisticas.style.display="block";
+        if(seccion==="detalle") detalle.style.display="block";
     }
 
     // Últimos 5 avisos en portada
@@ -179,11 +181,11 @@ document.getElementById("region").addEventListener("change", function() {
 
     // Listado de avisos con detalle
     const avisosListado = [
-        {fechaPub:"2025-08-01", fechaEnt:"2025-08-03", comuna:"providencia", sector:"Centro", cantidad:1, tipo:"Perro", edad:"2 años", nombre:"Juan", fotos:["https://via.placeholder.com/320x240"]},
-        {fechaPub:"2025-08-02", fechaEnt:"2025-08-05", comuna:"vitacura", sector:"condes", cantidad:2, tipo:"Gato", edad:"6 meses", nombre:"Ana", fotos:["https://via.placeholder.com/320x240","https://via.placeholder.com/320x240"]},
-        {fechaPub:"2025-08-03", fechaEnt:"2025-08-06", comuna:"providencia", sector:"nuñoa", cantidad:1, tipo:"Perro", edad:"3 años", nombre:"Luis" , fotos:["https://via.placeholder.com/320x240"]},
-        {fechaPub:"2025-08-04", fechaEnt:"2025-08-07", comuna:"providencia", sector:"barrio italia", cantidad:1, tipo:"Gato", edad:"1 año", nombre:"Maria", fotos:["https://via.placeholder.com/320x240"]},
-        {fechaPub:"2025-08-05", fechaEnt:"2025-08-08", comuna:"providencia", sector:"nuñoa", cantidad:3, tipo:"Perro", edad:"4 meses", nombre:"Pedro", fotos:["https://via.placeholder.com/320x240"]},
+        {fechaPub:"2025-08-01", fechaEnt:"2025-08-03", comuna:"providencia", sector:"Centro", cantidad:1, tipo:"Perro", edad:"2 años", nombre:"Juan", fotos:["img/salchi.jpeg", "img/salchi2.jpeg"]},
+        {fechaPub:"2025-08-02", fechaEnt:"2025-08-05", comuna:"vitacura", sector:"condes", cantidad:2, tipo:"Gato", edad:"6 meses", nombre:"Ana", fotos:["img/gato1.jpeg"]},
+        {fechaPub:"2025-08-03", fechaEnt:"2025-08-06", comuna:"providencia", sector:"nuñoa", cantidad:1, tipo:"Perro", edad:"3 años", nombre:"Luis" , fotos:["img/perro4.jpeg"]},
+        {fechaPub:"2025-08-04", fechaEnt:"2025-08-07", comuna:"providencia", sector:"barrio italia", cantidad:1, tipo:"Gato", edad:"1 año", nombre:"Maria", fotos:["img/perro3.jpeg"]},
+        {fechaPub:"2025-08-05", fechaEnt:"2025-08-08", comuna:"providencia", sector:"nuñoa", cantidad:3, tipo:"Perro", edad:"4 meses", nombre:"Pedro", fotos:["img/perro2.jpeg"]},
     ];
 
     const listadoTable = document.getElementById("listado-table");
@@ -211,15 +213,23 @@ document.getElementById("region").addEventListener("change", function() {
                                     <p>Tipo: ${aviso.tipo}</p>
                                     <p>Edad: ${aviso.edad}</p>
                                     <p>Nombre: ${aviso.nombre}</p>                                    
-                                    <div id="fotos-detalle"></div>`;
+                                    <div id="fotos-detalle"></div>
+                                    <br>
+                
+                                   `;
+       
+
+
             const fotosDiv = document.getElementById("fotos-detalle");
             aviso.fotos.forEach(src=>{
                 const img = document.createElement("img");
                 img.src=src;
+                img.alt = "Foto del aviso";
                 img.style.width="320px";
                 img.style.height="240px";
                 img.style.margin="5px";
                 img.style.cursor="pointer";
+
                 img.onclick=()=>{
                     const overlay = document.createElement("div");
                     overlay.style.position="fixed";
@@ -232,10 +242,13 @@ document.getElementById("region").addEventListener("change", function() {
                     overlay.style.alignItems="center";
                     overlay.style.justifyContent="center";
                     overlay.style.zIndex="1000";
+
+
                     const imgLarge = document.createElement("img");
                     imgLarge.src=src;
                     imgLarge.style.width="800px";
                     imgLarge.style.height="600px";
+
                     const btnClose = document.createElement("button");
                     btnClose.innerText="Cerrar";
                     btnClose.style.position="absolute";
@@ -243,6 +256,7 @@ document.getElementById("region").addEventListener("change", function() {
                     btnClose.style.right="20px";
                     btnClose.style.padding="10px";
                     btnClose.onclick=()=>document.body.removeChild(overlay);
+                   
                     overlay.appendChild(imgLarge);
                     overlay.appendChild(btnClose);
                     document.body.appendChild(overlay);

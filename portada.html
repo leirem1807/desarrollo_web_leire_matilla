@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Gestión de Adopción de Mascotas</title>
+<link rel="stylesheet" href="web.css">
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+const contactoSelect = document.getElementById("contacto-medio");
+const contactoIdsDiv = document.getElementById("contacto-ids");
+
+contactoSelect.addEventListener("change", function(){
+    contactoIdsDiv.innerHTML = ""; // limpiar inputs anteriores
+    const seleccionados = Array.from(contactoSelect.selectedOptions);
+    if(seleccionados.length > 5){
+        alert("Máximo 5 contactos");
+        // Deseleccionar el último seleccionado
+        seleccionados[seleccionados.length - 1].selected = false;
+        return;
+    }
+    seleccionados.forEach(opt => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = `ID o URL para ${opt.value}`;
+        input.classList.add("contacto-id");
+        input.minLength = 4;  // mínimo 4 caracteres
+        input.maxLength = 50; // máximo 50 caracteres
+        contactoIdsDiv.appendChild(input);
+        contactoIdsDiv.appendChild(document.createElement("br"));
+    });
+});
+
+// Validación en el submit
+document.getElementById("form-aviso").onsubmit = function(e){
+    e.preventDefault();
+    
+    // ... otras validaciones ...
+
+    const inputsContacto = document.querySelectorAll(".contacto-id");
+    for(const input of inputsContacto){
+        if(input.value.length < 4 || input.value.length > 50){
+            alert("El ID o URL de contacto debe tener entre 4 y 50 caracteres");
+            return;
+        }
+    }
+
+    // ... resto de la función ...
+}
+
+    // Hash map de regiones y comunas (solo las 7 primeras regiones)
+const comunasPorRegion = {
+    "1": ["Arica", "Camarones", "Putre", "General Lagos"],
+    "2": ["Iquique", "Alto Hospicio", "Pozo Almonte", "Camiña"],
+    "3": ["Antofagasta", "Mejillones", "Taltal", "Sierra Gorda"],
+    "4": ["Copiapó", "Caldera", "Tierra Amarilla", "Chañaral"],
+    "5": ["La Serena", "Coquimbo", "Andacollo", "Ovalle"],
+    "6": ["Valparaíso", "Viña del Mar", "Quilpué", "Villa Alemana"],
+    "7": ["Santiago", "Providencia", "Las Condes", "Ñuñoa", "Maipú", "La Florida", "Vitacura"]
+};
+
+// Actualizar comunas cuando cambie la región
+document.getElementById("region").addEventListener("change", function() {
+    const regionSeleccionada = this.value;
+    const comunaSelect = document.getElementById("comuna");
+    comunaSelect.innerHTML = '<option value="">Seleccione</option>'; // limpiar opciones
+    if(comunasPorRegion[regionSeleccionada]){
+        comunasPorRegion[regionSeleccionada].forEach(comuna => {
+            const option = document.createElement("option");
+            option.value = comuna;
+            option.text = comuna;
+            comunaSelect.appendChild(option);
+        });
+    }
+});
+    // Secciones
+    const portada = document.getElementById("portada");
+    const agregarForm = document.getElementById("agregar-form");
+    const listado = document.getElementById("listado");
+    const detalle = document.getElementById("detalle");
+    const estadisticas = document.getElementById("estadisticas");
+
+    // Botones menú
+    document.getElementById("btn-portada").onclick = () => mostrarSeccion("portada");
+    document.getElementById("btn-agregar").onclick = () => mostrarSeccion("agregar");
+    document.getElementById("btn-listado").onclick = () => mostrarSeccion("listado");
+    document.getElementById("btn-estadisticas").onclick = () => mostrarSeccion("estadisticas");
+
+    function mostrarSeccion(seccion) {
+        portada.style.display = "none";
+        agregarForm.style.display = "none";
+        listado.style.display = "none";
+        detalle.style.display = "none";
+        estadisticas.style.display = "none";
+
+        if(seccion==="portada") portada.style.display="block";
+        if(seccion==="agregar") agregarForm.style.display="block";
+        if(seccion==="listado") listado.style.display="block";
+        if(seccion==="estadisticas") estadisticas.style.display="block";
+    }
+
+    // Últimos 5 avisos en portada
+    const ultimosAvisos = [
+        {fecha:"2025-08-01", comuna:"Providencia", sector:"Centro", cantidad:1, tipo:"Perro", edad:"2 años", foto:"https://www.pexels.com/photo/short-coated-brown-and-white-puppy-1108090/"},
+        {fecha:"2025-08-02", comuna:"Nuñoa", sector:"Plaza Nuñoa", cantidad:4, tipo:"Gato", edad:"6 meses", foto:"https://www.google.com/imgres?q=gato&imgurl=https%3A%2F%2Fpurina.cl%2Fsites%2Fdefault%2Ffiles%2F2025-04%2Frazas-de-gatos.jpg&imgrefurl=https%3A%2F%2Fpurina.cl%2Fpurina%2Fgatos%2Fconoce-algunas-razas-de-gatos&docid=RJKYf6iA6EedKM&tbnid=Xj-VZX85DPy5nM&vet=12ahUKEwiNxKKs1quPAxUypZUCHYaFHCIQM3oECBUQAA..i&w=940&h=470&hcb=2&ved=2ahUKEwiNxKKs1quPAxUypZUCHYaFHCIQM3oECBUQAA"},
+        {fecha:"2025-08-03", comuna:"Las condes", sector:"El Golf", cantidad:1, tipo:"Perro", edad:"3 años", foto:"https://www.google.com/imgres?q=perro&imgurl=https%3A%2F%2Fblog.mascotaysalud.com%2Fwp-content%2Fuploads%2F2025%2F07%2FPerros-Medianos-1024x683.jpg&imgrefurl=https%3A%2F%2Fblog.mascotaysalud.com%2Frazas-perros%2F&docid=AEy91RFQEUW8jM&tbnid=YnTMhnsPMRDl7M&vet=12ahUKEwi4msfA1quPAxVOqZUCHZ7nLBgQM3oECCUQAA..i&w=1024&h=683&hcb=2&ved=2ahUKEwi4msfA1quPAxVOqZUCHZ7nLBgQM3oECCUQAA"},
+        {fecha:"2025-08-04", comuna:"Vitacura", sector:"La Dehesa", cantidad:1, tipo:"Gato", edad:"1 año", foto:"https://www.google.com/imgres?q=gato&imgurl=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2F4%2F4d%2FCat_November_2010-1a.jpg%2F1200px-Cat_November_2010-1a.jpg&imgrefurl=https%3A%2F%2Fes.wikipedia.org%2Fwiki%2FGato_atigrado&docid=NZ-SnR1AfFbHFM&tbnid=vzhK_exjE3oL3M&vet=12ahUKEwiNxKKs1quPAxUypZUCHYaFHCIQM3oECBIQAA..i&w=1200&h=1602&hcb=2&ved=2ahUKEwiNxKKs1quPAxUypZUCHYaFHCIQM3oECBIQAA"},
+        {fecha:"2025-08-05", comuna:"Providencia", sector:"Centro", cantidad:1, tipo:"Perro", edad:"4 meses", foto:"data:image/jpeg;base64,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"},
+    ];
+
+    const ultimosTable = document.getElementById("ultimos-table");
+    ultimosAvisos.forEach(aviso=>{
+        let row = ultimosTable.insertRow();
+        row.insertCell().innerText = aviso.fecha;
+        row.insertCell().innerText = aviso.comuna;
+        row.insertCell().innerText = aviso.sector;
+        row.insertCell().innerText = aviso.cantidad;
+        row.insertCell().innerText = aviso.tipo;
+        row.insertCell().innerText = aviso.edad;
+        
+        let imgCell = row.insertCell();
+        let img = document.createElement("img");
+        img.src = aviso.foto;
+        img.width = 80;  // ancho
+        img.height = 60; // alto
+        imgCell.appendChild(img);
+    });
+
+    // Formulario agregar aviso
+    let fotosCount = 1;
+    document.getElementById("btn-agregar-foto").onclick = function() {
+        if(fotosCount>=5) { alert("Máximo 5 fotos"); return; }
+        fotosCount++;
+        const input = document.createElement("input");
+        input.type="file";
+        input.name="foto";
+        input.required = true;
+        document.getElementById("fotos-container").appendChild(input);
+    }
+
+    document.getElementById("form-aviso").onsubmit = function(e){
+        e.preventDefault();
+
+        // Validaciones básicas
+        const region = document.getElementById("region").value;
+        const comuna = document.getElementById("comuna").value;
+        const sector = document.getElementById("sector").value;
+        const nombre = document.getElementById("nombre").value;
+        const email = document.getElementById("email").value;
+        const tipo = document.getElementById("tipo").value;
+        const cantidad = document.getElementById("cantidad").value;
+        const edad = document.getElementById("edad").value;
+        const unidadEdad = document.getElementById("unidad-edad").value;
+        const fechaEntrega = document.getElementById("fecha-entrega").value;
+
+        if(!region || !comuna || !nombre || !email || !tipo || !cantidad || !edad || !unidadEdad || !fechaEntrega){
+            alert("Debe completar todos los campos obligatorios");
+            return;
+        }
+
+        if(nombre.length<3 || nombre.length>200){ 
+            alert("Nombre inválido"); return; }
+        if(email.length>100){ 
+            alert("Email demasiado largo"); return; }
+        if(cantidad<1 || edad<1){ 
+            alert("Cantidad o edad inválida"); return; }
+        if(sector.length > 100){
+            alert("El sector no puede superar los 100 caracteres");return;}
+
+        // Confirmación
+        if(confirm("¿Está seguro que desea agregar este aviso de adopción?")){
+            alert("Hemos recibido la información de adopción, muchas gracias y suerte!");
+            mostrarSeccion("portada");
+            document.getElementById("form-aviso").reset();
+            fotosCount = 1;
+            document.getElementById("fotos-container").innerHTML='<input type="file" name="foto" required>';
+        }
+    }
+
+    // Listado de avisos con detalle
+    const avisosListado = [
+        {fechaPub:"2025-08-01", fechaEnt:"2025-08-03", comuna:"providencia", sector:"Centro", cantidad:1, tipo:"Perro", edad:"2 años", nombre:"Juan", contacto:"email", fotos:["https://via.placeholder.com/320x240"]},
+        {fechaPub:"2025-08-02", fechaEnt:"2025-08-05", comuna:"vitacura", sector:"condes", cantidad:2, tipo:"Gato", edad:"6 meses", nombre:"Ana", contacto:"whatsapp", fotos:["https://via.placeholder.com/320x240","https://via.placeholder.com/320x240"]},
+        {fechaPub:"2025-08-03", fechaEnt:"2025-08-06", comuna:"providencia", sector:"nuñoa", cantidad:1, tipo:"Perro", edad:"3 años", nombre:"Luis", contacto:"telegram", fotos:["https://via.placeholder.com/320x240"]},
+        {fechaPub:"2025-08-04", fechaEnt:"2025-08-07", comuna:"providencia", sector:"barrio italia", cantidad:1, tipo:"Gato", edad:"1 año", nombre:"Maria", contacto:"instagram", fotos:["https://via.placeholder.com/320x240"]},
+        {fechaPub:"2025-08-05", fechaEnt:"2025-08-08", comuna:"providencia", sector:"nuñoa", cantidad:3, tipo:"Perro", edad:"4 meses", nombre:"Pedro", contacto:"X", fotos:["https://via.placeholder.com/320x240"]},
+    ];
+
+    const listadoTable = document.getElementById("listado-table");
+    avisosListado.forEach((aviso,i)=>{
+        let row = listadoTable.insertRow();
+        row.style.cursor="pointer";
+        row.insertCell().innerText=aviso.fechaPub;
+        row.insertCell().innerText=aviso.fechaEnt;
+        row.insertCell().innerText=aviso.comuna;
+        row.insertCell().innerText=aviso.sector;
+        row.insertCell().innerText=aviso.cantidad;
+        row.insertCell().innerText=aviso.tipo;
+        row.insertCell().innerText=aviso.edad;
+        row.insertCell().innerText=aviso.nombre;
+        row.insertCell().innerText=aviso.contacto;
+        row.insertCell().innerText=aviso.fotos.length;
+
+        row.onclick = ()=>{
+            mostrarSeccion("detalle");
+            const detalleDiv = document.getElementById("detalle-info");
+            detalleDiv.innerHTML = `<p>Fecha publicación: ${aviso.fechaPub}</p>
+                                    <p>Fecha entrega: ${aviso.fechaEnt}</p>
+                                    <p>Comuna: ${aviso.comuna}</p>
+                                    <p>Sector: ${aviso.sector}</p>
+                                    <p>Cantidad: ${aviso.cantidad}</p>
+                                    <p>Tipo: ${aviso.tipo}</p>
+                                    <p>Edad: ${aviso.edad}</p>
+                                    <p>Nombre contacto: ${aviso.nombre}</p>
+                                    <p>Contacto: ${aviso.contacto}</p>
+                                    <div id="fotos-detalle"></div>`;
+            const fotosDiv = document.getElementById("fotos-detalle");
+            aviso.fotos.forEach(src=>{
+                const img = document.createElement("img");
+                img.src=src;
+                img.style.width="320px";
+                img.style.height="240px";
+                img.style.margin="5px";
+                img.style.cursor="pointer";
+                img.onclick=()=>{
+                    const overlay = document.createElement("div");
+                    overlay.style.position="fixed";
+                    overlay.style.top="0";
+                    overlay.style.left="0";
+                    overlay.style.width="100%";
+                    overlay.style.height="100%";
+                    overlay.style.background="rgba(0,0,0,0.8)";
+                    overlay.style.display="flex";
+                    overlay.style.alignItems="center";
+                    overlay.style.justifyContent="center";
+                    overlay.style.zIndex="1000";
+                    const imgLarge = document.createElement("img");
+                    imgLarge.src=src;
+                    imgLarge.style.width="800px";
+                    imgLarge.style.height="600px";
+                    const btnClose = document.createElement("button");
+                    btnClose.innerText="Cerrar";
+                    btnClose.style.position="absolute";
+                    btnClose.style.top="20px";
+                    btnClose.style.right="20px";
+                    btnClose.style.padding="10px";
+                    btnClose.onclick=()=>document.body.removeChild(overlay);
+                    overlay.appendChild(imgLarge);
+                    overlay.appendChild(btnClose);
+                    document.body.appendChild(overlay);
+                }
+                fotosDiv.appendChild(img);
+            });
+        }
+    });
+
+});
+</script>
+</head>
+<body>
+
+<!-- Menú -->
+<nav>
+<button id="btn-portada">Portada</button>
+<button id="btn-agregar">Agregar aviso de adopción</button>
+<button id="btn-listado">Ver listado de adopciones</button>
+<button id="btn-estadisticas">Estadísticas</button>
+</nav>
+
+<!-- Portada -->
+<section id="portada">
+<h1>Bienvenido al sistema de adopción de mascotas</h1>
+<h2>Últimos 5 avisos de adopción</h2>
+<table border="1" id="ultimos-table">
+<tr><th>Fecha</th><th>Comuna</th><th>Sector</th><th>Cantidad</th><th>Tipo</th><th>Edad</th><th>Foto</th></tr>
+</table>
+</section>
+
+<!-- Formulario agregar aviso -->
+<section id="agregar-form" style="display:none">
+<h2>Agregar aviso de adopción</h2>
+<form id="form-aviso">
+<h3>Información del lugar de entrega</h3>
+Región: <select id="region" required>
+<option value="">Seleccione</option><option value="1">Arica y Parinacota</option>
+    <option value="2">Tarapacá</option>
+    <option value="3">Antofagasta</option>
+    <option value="4">Atacama</option>
+    <option value="5">Coquimbo</option>
+    <option value="6">Valparaíso</option>
+    <option value="7">Metropolitana de Santiago</option>
+</select><br>
+Comuna: <select id="comuna" required>
+<option value="">Seleccione</option><option>Comuna 1</option><option>Comuna 2</option>
+</select><br>
+Sector: <input type="text" id="sector" maxlength="100"><br>
+
+<h3>Datos de contacto</h3>
+Nombre: <input type="text" id="nombre" required><br>
+Email: <input type="email" id="email" required placeholder="@gmail.com"><br>
+Número celular: <input type="tel" placeholder="+NNN.NNNNNNNN"><br>
+Contactar por: <select id="contacto-medio" multiple>
+    <option value="whatsapp">whatsapp</option>
+    <option value="telegram">telegram</option>
+    <option value="X">X</option>
+    <option value="instagram">instagram</option>
+    <option value="tiktok">tiktok</option>
+    <option value="otra">otra</option>
+</select><br>
+<div id="contacto-ids"></div>
+<h3>Información de la mascota</h3>
+Tipo: <select id="tipo" required><option value="">Seleccione</option><option>Perro</option><option>Gato</option></select><br>
+Cantidad: <input type="number" id="cantidad" required min="1"><br>
+Edad: <input type="number" id="edad" required min="1"><br>
+Unidad de medida: <select id="unidad-edad" required><option value="">Seleccione</option><option>meses</option><option>años</option></select><br>
+Fecha disponible: <input type="datetime-local" id="fecha-entrega" required><br>
+Descripción:<br>
+<textarea cols="50" rows="10"></textarea><br>
+
+Fotos: <div id="fotos-container"><input type="file" name="foto" required></div>
+<button type="button" id="btn-agregar-foto">Agregar otra foto</button><br><br>
+
+<button type="submit">Agregar este aviso de adopción</button>
+</form>
+</section>
+
+<!-- Listado -->
+<section id="listado" style="display:none">
+<h2>Listado de avisos de adopción</h2>
+<table border="1" id="listado-table">
+<tr>
+<th>Fecha Pub</th><th>Fecha Ent</th><th>Comuna</th><th>Sector</th>
+<th>Cantidad</th><th>Tipo</th><th>Edad</th><th>Nombre</th><th>Contacto</th><th>Total fotos</th>
+</tr>
+</table>
+</section>
+
+<!-- Detalle aviso -->
+<section id="detalle" style="display:none">
+<h2>Detalle del aviso</h2>
+<div id="detalle-info"></div>
+<button onclick="document.getElementById('detalle').style.display='none';document.getElementById('listado').style.display='block';">Volver al listado</button>
+<button onclick="document.getElementById('detalle').style.display='none';document.getElementById('portada').style.display='block';">Volver a portada</button>
+</section>
+
+<!-- Estadísticas -->
+<section id="estadisticas" style="display:none">
+<h2>Estadísticas</h2>
+<img src="img/grafico_lineas.png" width="800"><br>
+<img src="img/grafico_torta.png" width="800"><br>
+<img src="img/grafico_barras.png" width="800"><br>
+<button onclick="document.getElementById('estadisticas').style.display='none';document.getElementById('portada').style.display='block';">Volver a portada</button>
+</section>
+
+</body>
+</html>

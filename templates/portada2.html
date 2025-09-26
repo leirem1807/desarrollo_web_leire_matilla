@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Gestión de Adopción de Mascotas</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:20px; background:#f8f8f8; }
+  nav { margin-bottom: 20px; text-align:center; }
+  nav button { margin-right: 8px; padding: 8px 12px; cursor:pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; background:#fff; }
+  th, td { border: 1px solid #4CAF50; padding: 8px; text-align: center; }
+  th { background-color: #4CAF50; color: white; }
+  tr:nth-child(even) { background-color: #f2f2f2; }
+  img.thumb { width:80px; height:60px; object-fit:cover; border-radius:4px; }
+  section { margin-top: 20px; background:#fff; padding:12px; border-radius:6px; box-shadow:0 0 6px rgba(0,0,0,0.06); }
+  label { display:block; margin-top:8px; }
+  .flash { padding:10px; border-radius:6px; margin-bottom:10px; }
+  .flash.success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+  .flash.error { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+</style>
+</head>
+<body>
+
+<nav>
+  <button id="btn-portada">Portada</button>
+  <button id="btn-agregar">Agregar aviso de adopción</button>
+  <button id="btn-listado">Ver listado de adopciones</button>
+  <button id="btn-estadisticas">Estadísticas</button>
+</nav>
+
+<!-- Flash messages -->
+<div id="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for cat, msg in messages %}
+        <div class="flash {{ 'success' if cat=='success' else 'error' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>
+
+<!-- Portada -->
+<section id="portada">
+  <h1>Bienvenido al sistema de adopción de mascotas</h1>
+  <h2>Últimos 5 avisos de adopción</h2>
+  <table id="ultimos-table">
+    <tr><th>Fecha</th><th>Comuna</th><th>Sector</th><th>Cantidad</th><th>Tipo</th><th>Edad</th><th>Foto</th></tr>
+  </table>
+</section>
+
+<!-- Agregar aviso -->
+<section id="agregar-form" style="display:none">
+  <h2>Agregar aviso de adopción</h2>
+  <form id="form-aviso" method="POST"  action="/agregar-aviso" enctype="multipart/form-data">
+    <h3>Información del lugar de entrega</h3>
+    <label>Región:
+      <select id="region" name="region" required>
+        <option value="">Seleccione</option>
+      </select>
+    </label>
+    <label>Comuna:
+      <select id="comuna" name="comuna" required>
+        <option value="">Seleccione</option>
+      </select>
+    </label>
+    <label>Sector: <input type="text" name="sector" maxlength="100"></label>
+
+    <h3>Datos de contacto</h3>
+    <label>Nombre: <input type="text" name="nombre" required></label>
+    <label>Email: <input type="email" name="email" required></label>
+    <label>Número celular: <input type="tel" name="celular"></label>
+
+    <label>Contactar por:
+      <select id="contacto-medio" name="contactar_por" multiple>
+        <option value="whatsapp">whatsapp</option>
+        <option value="telegram">telegram</option>
+        <option value="X">X</option>
+        <option value="instagram">instagram</option>
+        <option value="tiktok">tiktok</option>
+        <option value="otra">otra</option>
+      </select>
+    </label>
+    <div id="contacto-ids"></div>
+
+    <h3>Información de la mascota</h3>
+    <label>Tipo:
+      <select name="tipo" required>
+        <option value="">Seleccione</option>
+        <option value="perro">Perro</option>
+        <option value="gato">Gato</option>
+      </select>
+    </label>
+    <label>Cantidad: <input type="number" name="cantidad" required min="1"></label>
+    <label>Edad: <input type="number" name="edad" required min="1"></label>
+    <label>Unidad de medida:
+      <select name="unidad_medida" required>
+        <option value="">Seleccione</option>
+        <option value="a">años</option>
+        <option value="m">meses</option>
+      </select>
+    </label>
+    <label>Fecha disponible: <input type="datetime-local" name="fecha_entrega" required></label>
+    <label>Descripción:<br><textarea name="descripcion" cols="50" rows="5"></textarea></label>
+
+    <label for="foto">Fotos:</label>
+      <div id="fotos-container">
+        <input type="file" name="foto" id="foto" accept="image/*" required>
+      </div>
+    
+    <button type="button" id="btn-agregar-foto">Agregar otra foto</button>
+    <br><br>
+    <button type="submit">Agregar este aviso de adopción</button>
+  </form>
+</section>
+
+<!-- Listado -->
+<section id="listado" style="display:none">
+  <h2>Listado de avisos (página <span id="page-num">1</span>)</h2>
+  <table id="listado-table">
+    <tr><th>Fecha Pub</th><th>Fecha Ent</th><th>Comuna</th><th>Sector</th><th>Cantidad</th><th>Tipo</th><th>Edad</th><th>Nombre</th><th>Contacto</th><th>Total fotos</th></tr>
+  </table>
+  <div style="margin-top:10px;">
+    <button id="prev-page">Anterior</button>
+    <button id="next-page">Siguiente</button>
+  </div>
+</section>
+
+<!-- Detalle -->
+<section id="detalle" style="display:none">
+  <h2>Detalle del aviso</h2>
+  <div id="detalle-info"></div>
+  <button id="volver-listado">Volver al listado</button>
+  <button id="volver-portada">Volver a portada</button>
+</section>
+
+<!-- Estadísticas -->
+<section id="estadisticas" style="display:none">
+  <h2>Estadísticas</h2>
+  <div id="estadisticas-imgs">
+    <img src="/static/img/grafico_lineas.png" alt="grafico_lineas">
+    <img src="/static/img/grafico_torta.png" alt="grafico_torta">
+    <img src="/static/img/grafico_barras.png" alt="grafico_barras">
+  </div>
+  <button onclick="mostrarSeccion('portada')">Volver a portada</button>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Secciones
+  const portada = document.getElementById("portada");
+  const agregarForm = document.getElementById("agregar-form");
+  const listado = document.getElementById("listado");
+  const detalle = document.getElementById("detalle");
+  const estadisticas = document.getElementById("estadisticas");
+
+  document.getElementById("btn-portada").onclick = ()=>mostrarSeccion("portada");
+  document.getElementById("btn-agregar").onclick = ()=>mostrarSeccion("agregar");
+  document.getElementById("btn-listado").onclick = ()=>mostrarSeccion("listado");
+  document.getElementById("btn-estadisticas").onclick = ()=>mostrarSeccion("estadisticas");
+
+  function mostrarSeccion(s){
+    portada.style.display = "none";
+    agregarForm.style.display = "none";
+    listado.style.display = "none";
+    detalle.style.display = "none";
+    estadisticas.style.display = "none";
+    if(s==="portada") portada.style.display="block";
+    if(s==="agregar") agregarForm.style.display="block";
+    if(s==="listado") listado.style.display="block";
+    if(s==="estadisticas") estadisticas.style.display="block";
+    if(s==="detalle") detalle.style.display="block";
+  }
+
+  // Cargar regiones en select (desde API)
+  async function cargarRegiones(){
+    const res = await fetch("/api/regiones");
+    const regiones = await res.json();
+    const sel = document.getElementById("region");
+    regiones.forEach(r=>{
+      const opt = document.createElement("option");
+      opt.value = r.id; opt.text = r.nombre;
+      sel.appendChild(opt);
+    });
+  }
+  cargarRegiones();
+
+  // Comunas por region
+  document.getElementById("region").addEventListener("change", async function(){
+    const regionId = this.value; const sel = document.getElementById("comuna");
+    sel.innerHTML = '<option value="">Seleccione</option>';
+    if(!regionId) return;
+    const res = await fetch(`/api/comunas/${regionId}`);
+    const comunas = await res.json();
+    comunas.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id; opt.text = c.nombre;
+      sel.appendChild(opt);
+    });
+  });
+
+  // Contactos dinámicos (cada input con name="contacto-id")
+  const contactoSelect = document.getElementById("contacto-medio");
+  const contactoIdsDiv = document.getElementById("contacto-ids");
+  contactoSelect.addEventListener("change", function(){
+    contactoIdsDiv.innerHTML = "";
+    const seleccionados = Array.from(contactoSelect.selectedOptions);
+    if(seleccionados.length > 5){ alert("Máximo 5 contactos"); seleccionados[seleccionados.length-1].selected = false; return; }
+    seleccionados.forEach(opt=>{
+      const label = document.createElement("label");
+      label.innerText = `ID/URL para ${opt.value}: `;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.name = "contacto-id";        // <-- importante
+      input.placeholder = `ID o URL para ${opt.value}`;
+      input.required = true;
+      label.appendChild(input);
+      contactoIdsDiv.appendChild(label);
+    });
+  });
+
+  // Fotos dinámicas
+  let fotosCount = 1;
+  document.getElementById("btn-agregar-foto").onclick = function(){
+    if(fotosCount >= 5){ alert("Máximo 5 fotos"); return; }
+    fotosCount++;
+    const input = document.createElement("input");
+    input.type = "file"; input.name = "foto"; input.accept = "image/*"; input.required = true;
+    document.getElementById("fotos-container").appendChild(input);
+  };
+
+  // Cargar últimos 5
+  async function cargarUltimos(){
+    const res = await fetch("/api/ultimos");
+    const ultimos = await res.json();
+    const t = document.getElementById("ultimos-table");
+    t.innerHTML = '<tr><th>Fecha</th><th>Comuna</th><th>Sector</th><th>Cantidad</th><th>Tipo</th><th>Edad</th><th>Foto</th></tr>';
+    ultimos.forEach(a=>{
+      const row = t.insertRow();
+      row.insertCell().innerText = a.fechaPub || "";
+      row.insertCell().innerText = a.comuna || "";
+      row.insertCell().innerText = a.sector || "";
+      row.insertCell().innerText = a.cantidad || "";
+      row.insertCell().innerText = a.tipo || "";
+      row.insertCell().innerText = a.edad || "";
+      const c = row.insertCell();
+      if(a.fotos && a.fotos.length>0){
+        const img = document.createElement("img");
+        img.src = a.fotos[0]; img.className = "thumb";
+        c.appendChild(img);
+      }
+    });
+  }
+
+  // Listado paginado (page control)
+  let currentPage = 1;
+  async function cargarListado(page=1){
+    const res = await fetch(`/api/listado?page=${page}`);
+    const payload = await res.json();
+    const listado = payload.avisos || [];
+    document.getElementById("page-num").innerText = page;
+    const table = document.getElementById("listado-table");
+    table.innerHTML = '<tr><th>Fecha Pub</th><th>Fecha Ent</th><th>Comuna</th><th>Sector</th><th>Cantidad</th><th>Tipo</th><th>Edad</th><th>Nombre</th><th>Contacto</th><th>Total fotos</th></tr>';
+    listado.forEach(a=>{
+      const row = table.insertRow();
+      row.style.cursor = "pointer";
+      row.insertCell().innerText = a.fechaPub || "";
+      row.insertCell().innerText = a.fechaEnt || "";
+      row.insertCell().innerText = a.comuna || "";
+      row.insertCell().innerText = a.sector || "";
+      row.insertCell().innerText = a.cantidad || "";
+      row.insertCell().innerText = a.tipo || "";
+      row.insertCell().innerText = a.edad || "";
+      row.insertCell().innerText = a.nombre || "";
+      row.insertCell().innerText = a.contacto || "";
+      row.insertCell().innerText = (a.fotos || []).length;
+      row.onclick = ()=> mostrarDetalle(a.id);
+    });
+
+    // activar botones
+    document.getElementById("prev-page").disabled = !payload.has_prev;
+    document.getElementById("next-page").disabled = !payload.has_next;
+  }
+
+  document.getElementById("prev-page").onclick = ()=>{ if(currentPage>1){ currentPage--; cargarListado(currentPage);} };
+  document.getElementById("next-page").onclick = ()=>{ currentPage++; cargarListado(currentPage); };
+
+  // Mostrar detalle (llama API detalle)
+  async function mostrarDetalle(avisoId){
+    const res = await fetch(`/api/detalle/${avisoId}`);
+    const a = await res.json();
+    mostrarSeccion("detalle");
+    const div = document.getElementById("detalle-info");
+    div.innerHTML = `
+      <p><b>Fecha pub:</b> ${a.fechaPub}</p>
+      <p><b>Fecha ent:</b> ${a.fechaEnt}</p>
+      <p><b>Comuna:</b> ${a.comuna}</p>
+      <p><b>Sector:</b> ${a.sector}</p>
+      <p><b>Cantidad:</b> ${a.cantidad}</p>
+      <p><b>Tipo:</b> ${a.tipo}</p>
+      <p><b>Edad:</b> ${a.edad}</p>
+      <p><b>Nombre:</b> ${a.nombre}</p>
+      <p><b>Contacto:</b> ${a.contacto}</p>
+      <p><b>Descripción:</b> ${a.descripcion || ''}</p>
+      <div id="fotos-detalle"></div>`;
+    const fotosDiv = document.getElementById("fotos-detalle");
+    (a.fotos || []).forEach(src=>{
+      const img = document.createElement("img");
+      img.src = src; img.style.width="320px"; img.style.height="240px"; img.style.margin="5px"; img.style.cursor="pointer";
+      img.onclick = ()=> {
+        const overlay = document.createElement("div");
+        overlay.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:2000;";
+        const imgL = document.createElement("img");
+        imgL.src = src; imgL.style.maxWidth="90%"; imgL.style.maxHeight="90%";
+        const btn = document.createElement("button");
+        btn.innerText="Cerrar"; btn.style.position="absolute"; btn.style.top="20px"; btn.style.right="20px";
+        btn.onclick = ()=> document.body.removeChild(overlay);
+        overlay.appendChild(imgL); overlay.appendChild(btn); document.body.appendChild(overlay);
+      };
+      fotosDiv.appendChild(img);
+    });
+  }
+
+  // botones detalle -> volver
+  document.getElementById("volver-listado").onclick = ()=> mostrarSeccion("listado");
+  document.getElementById("volver-portada").onclick = ()=> mostrarSeccion("portada");
+
+  // inicializar contenido
+  cargarUltimos();
+  cargarListado(currentPage);
+
+  // Validaciones cliente: mantén la lógica que necesites aquí (ejemplo simple)
+  const form = document.getElementById("form-aviso");
+  form.addEventListener("submit", function(e){
+    // Aquí puedes verificar campos antes de enviar; si todo OK el formulario se envía normalmente
+    // Ejemplo de validación mínima:
+    const nombre = form.nombre.value;
+    if(!nombre || nombre.length < 3){ alert("Nombre inválido"); e.preventDefault(); return; }
+    // Notar: no llamamos a e.preventDefault() si todo OK para que el form haga POST a /agregar-aviso
+  });
+
+}); // DOMContentLoaded
+</script>
+
+</body>
+</html>

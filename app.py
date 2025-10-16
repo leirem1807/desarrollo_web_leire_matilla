@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from datetime import datetime
+from sqlalchemy import func
 
 app = Flask(__name__)
 app.secret_key = "supersecret"
@@ -58,6 +59,15 @@ class Contacto(db.Model):
     nombre = db.Column(db.Enum("whatsapp", "telegram", "X", "instagram", "tiktok", "otra"))
     identificador = db.Column(db.String(150))
     actividad_id = db.Column(db.Integer, db.ForeignKey("aviso_adopcion.id"))
+
+class Comentario(db.Model):
+    __tablename__ = "comentario"
+    id = db.Column(db.Integer, primary_key=True)
+    aviso_id = db.Column(db.Integer, db.ForeignKey("aviso_adopcion.id"))
+    nombre = db.Column(db.String(80), nullable=False)
+    texto = db.Column(db.Text, nullable=False)
+    fecha = db.Column(db.DateTime, default=datetime.now)
+
 
 # --- Rutas ---
 @app.route("/")
@@ -142,6 +152,99 @@ def api_detalle(aviso_id):
         "descripcion": a.descripcion,
         "fotos": [ url_for('static', filename=f"img/{f.nombre_archivo}") for f in fotos ]
     })
+# ==============================
+# API: Comentarios
+# ==============================
+
+# Obtener comentarios de un aviso
+@app.route("/api/comentarios/<int:aviso_id>")
+def api_get_comentarios(aviso_id):
+    comentarios = Comentario.query.filter_by(aviso_id=aviso_id).order_by(Comentario.fecha.desc()).all()
+    data = [
+        {
+            "nombre": c.nombre,
+            "texto": c.texto,
+            "fecha": c.fecha.strftime("%Y-%m-%d %H:%M")
+        }
+        for c in comentarios
+    ]
+    return jsonify(data)
+
+
+# Agregar nuevo comentario
+@app.route("/api/comentarios/<int:aviso_id>", methods=["POST"])
+def api_add_comentario(aviso_id):
+    data = request.get_json()
+    nombre = (data.get("nombre") or "").strip()
+    texto = (data.get("texto") or "").strip()
+
+    # Validaciones
+    if not (3 <= len(nombre) <= 80):
+        return jsonify({"ok": False, "error": "El nombre debe tener entre 3 y 80 caracteres"})
+    if len(texto) < 5:
+        return jsonify({"ok": False, "error": "El comentario debe tener al menos 5 caracteres"})
+
+    # Insertar
+    comentario = Comentario(aviso_id=aviso_id, nombre=nombre, texto=texto)
+    db.session.add(comentario)
+    db.session.commit()
+
+    return jsonify({"ok": True, "msg": "Comentario agregado correctamente"})
+
+
+   # ESTADISTICAS PARTE 3
+# Gráfico 1: líneas (avisos por día)
+@app.route("/api/grafico_lineas")
+def grafico_lineas():
+    datos = (
+        db.session.query(func.date(Aviso.fecha_ingreso).label("dia"), func.count(Aviso.id))
+        .group_by(func.date(Aviso.fecha_ingreso))
+        .order_by(func.date(Aviso.fecha_ingreso))
+        .all()
+    )
+    return jsonify({"labels": [str(d[0]) for d in datos], "values": [d[1] for d in datos]})
+
+
+# Gráfico 2: torta (por tipo de mascota)
+@app.route("/api/grafico_torta")
+def grafico_torta():
+    datos = (
+        db.session.query(Aviso.tipo, func.count(Aviso.id))
+        .group_by(Aviso.tipo)
+        .all()
+    )
+    return jsonify({"labels": [d[0] for d in datos], "values": [d[1] for d in datos]})
+
+
+# Gráfico 3: barras (avisos por mes y tipo)
+@app.route("/api/grafico_barras")
+def grafico_barras():
+    datos = (
+        db.session.query(
+            func.month(Aviso.fecha_ingreso).label("mes"),
+            Aviso.tipo,
+            func.count(Aviso.id)
+        )
+        .group_by(func.month(Aviso.fecha_ingreso), Aviso.tipo)
+        .order_by(func.month(Aviso.fecha_ingreso))
+        .all()
+    )
+
+    meses = sorted(list(set([d[0] for d in datos])))
+    tipos = sorted(list(set([d[1] for d in datos])))
+
+    series = {}
+    for tipo in tipos:
+        series[tipo] = [0] * len(meses)
+    for d in datos:
+        mes_index = meses.index(d[0])
+        series[d[1]][mes_index] = d[2]
+
+    return jsonify({
+        "labels": [str(m) for m in meses],
+        "series": series
+    })
+
 
 @app.route("/agregar-aviso", methods=["POST"])
 def agregar_aviso():
@@ -224,3 +327,6 @@ def agregar_aviso():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+ 

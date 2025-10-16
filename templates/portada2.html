@@ -22,10 +22,10 @@
 <body>
 
 <nav>
-  <button id="btn-portada">Portada</button>
-  <button id="btn-agregar">Agregar aviso de adopción</button>
-  <button id="btn-listado">Ver listado de adopciones</button>
-  <button id="btn-estadisticas">Estadísticas</button>
+  <button onclick="mostrarSeccion('portada')">Portada</button>
+  <button onclick="mostrarSeccion('agregar')">Agregar aviso de adopción</button>
+  <button onclick="mostrarSeccion('listado')">Ver listado de adopciones</button>
+  <button onclick="mostrarSeccion('estadisticas'); cargarGraficos();">Estadísticas</button>
 </nav>
 
 <!-- Flash messages -->
@@ -103,9 +103,9 @@
     <label>Descripción:<br><textarea name="descripcion" cols="50" rows="5"></textarea></label>
 
     <label for="foto">Fotos:</label>
-      <div id="fotos-container">
-        <input type="file" name="foto" id="foto" accept="image/*" required>
-      </div>
+    <div id="fotos-container">
+      <input type="file" id="foto" name="foto" accept="image/*" required>
+    </div>
     
     <button type="button" id="btn-agregar-foto">Agregar otra foto</button>
     <br><br>
@@ -126,67 +126,132 @@
 </section>
 
 <!-- Detalle -->
+
 <section id="detalle" style="display:none">
   <h2>Detalle del aviso</h2>
   <div id="detalle-info"></div>
-  <button id="volver-listado">Volver al listado</button>
-  <button id="volver-portada">Volver a portada</button>
+
+  <h3>Comentarios</h3>
+  <div id="comentarios-lista"></div>
+
+  <h4>Agregar comentario</h4>
+  <form id="form-comentario">
+    <label>Nombre:<br>
+      <input type="text" id="comentario-nombre" required minlength="3" maxlength="80">
+    </label>
+    <label>Comentario:<br>
+      <textarea id="comentario-texto" rows="4" cols="50" required minlength="5"></textarea>
+    </label>
+    <br>
+    <button type="submit">Agregar comentario</button>
+  </form>
+  <p id="comentario-msg"></p>
+
+  <br>
+  <button onclick="mostrarSeccion('listado')">Volver al listado</button>
+  <button onclick="mostrarSeccion('portada')">Volver a la portada</button>
 </section>
+
 
 <!-- Estadísticas -->
 <section id="estadisticas" style="display:none">
   <h2>Estadísticas</h2>
-  <div id="estadisticas-imgs">
-    <img src="/static/img/grafico_lineas.png" alt="grafico_lineas">
-    <img src="/static/img/grafico_torta.png" alt="grafico_torta">
-    <img src="/static/img/grafico_barras.png" alt="grafico_barras">
-  </div>
-  <button onclick="mostrarSeccion('portada')">Volver a portada</button>
+  <canvas id="graficoLineas" width="600" height="300"></canvas>
+  <canvas id="graficoTorta" width="600" height="300"></canvas>
+  <canvas id="graficoBarras" width="600" height="300"></canvas>
+  <br><br>
+  <button onclick="mostrarSeccion('portada')">Volver a la portada</button>
 </section>
 
+<!-- Librería Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  // Secciones
-  const portada = document.getElementById("portada");
-  const agregarForm = document.getElementById("agregar-form");
-  const listado = document.getElementById("listado");
-  const detalle = document.getElementById("detalle");
-  const estadisticas = document.getElementById("estadisticas");
+// ======================================
+// FUNCIÓN GLOBAL PARA CAMBIAR SECCIONES
+// ======================================
+function mostrarSeccion(seccion) {
+  const ids = ["portada","agregar-form","listado","detalle","estadisticas"];
+  ids.forEach(id => document.getElementById(id).style.display = "none");
+  if (seccion === "agregar") seccion = "agregar-form";
+  document.getElementById(seccion).style.display = "block";
+}
 
-  document.getElementById("btn-portada").onclick = ()=>mostrarSeccion("portada");
-  document.getElementById("btn-agregar").onclick = ()=>mostrarSeccion("agregar");
-  document.getElementById("btn-listado").onclick = ()=>mostrarSeccion("listado");
-  document.getElementById("btn-estadisticas").onclick = ()=>mostrarSeccion("estadisticas");
+// ======================================
+// FUNCIÓN PARA CARGAR GRÁFICOS
+// ======================================
+let charts = {};
 
-  function mostrarSeccion(s){
-    portada.style.display = "none";
-    agregarForm.style.display = "none";
-    listado.style.display = "none";
-    detalle.style.display = "none";
-    estadisticas.style.display = "none";
-    if(s==="portada") portada.style.display="block";
-    if(s==="agregar") agregarForm.style.display="block";
-    if(s==="listado") listado.style.display="block";
-    if(s==="estadisticas") estadisticas.style.display="block";
-    if(s==="detalle") detalle.style.display="block";
-  }
+async function cargarGraficos() {
+  // Elimina gráficos anteriores si existen
+  for (let key in charts) charts[key].destroy();
 
-  // Cargar regiones en select (desde API)
-  async function cargarRegiones(){
-    const res = await fetch("/api/regiones");
-    const regiones = await res.json();
-    const sel = document.getElementById("region");
-    regiones.forEach(r=>{
-      const opt = document.createElement("option");
-      opt.value = r.id; opt.text = r.nombre;
-      sel.appendChild(opt);
-    });
-  }
-  cargarRegiones();
+  // --- Líneas ---
+  const resLineas = await fetch("/api/grafico_lineas");
+  const dataLineas = await resLineas.json();
+  charts.lineas = new Chart(document.getElementById("graficoLineas"), {
+    type: 'line',
+    data: {
+      labels: dataLineas.labels,
+      datasets: [{
+        label: 'Avisos por día',
+        data: dataLineas.values,
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.3
+      }]
+    }
+  });
 
-  // Comunas por region
+  // --- Torta ---
+  const resTorta = await fetch("/api/grafico_torta");
+  const dataTorta = await resTorta.json();
+  charts.torta = new Chart(document.getElementById("graficoTorta"), {
+    type: 'pie',
+    data: {
+      labels: dataTorta.labels,
+      datasets: [{
+        data: dataTorta.values,
+        backgroundColor: ['#4CAF50', '#FF9800']
+      }]
+    }
+  });
+
+  // --- Barras ---
+  const resBarras = await fetch("/api/grafico_barras");
+  const dataBarras = await resBarras.json();
+  const tipos = Object.keys(dataBarras.series);
+  const datasets = tipos.map(t => ({
+    label: t,
+    data: dataBarras.series[t],
+    backgroundColor: t === 'gato' ? '#FF9800' : '#2196F3'
+  }));
+  charts.barras = new Chart(document.getElementById("graficoBarras"), {
+    type: 'bar',
+    data: { labels: dataBarras.labels, datasets },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+}
+</script>
+
+<script>
+// ======================================
+// portada, listado
+// ======================================
+document.addEventListener("DOMContentLoaded", async function() {
+  // Cargar regiones
+  const res = await fetch("/api/regiones");
+  const regiones = await res.json();
+  const sel = document.getElementById("region");
+  regiones.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.id; opt.text = r.nombre;
+    sel.appendChild(opt);
+  });
+
+  // Comunas dinámicas
   document.getElementById("region").addEventListener("change", async function(){
-    const regionId = this.value; const sel = document.getElementById("comuna");
+    const regionId = this.value;
+    const sel = document.getElementById("comuna");
     sel.innerHTML = '<option value="">Seleccione</option>';
     if(!regionId) return;
     const res = await fetch(`/api/comunas/${regionId}`);
@@ -198,148 +263,195 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
-  // Contactos dinámicos (cada input con name="contacto-id")
-  const contactoSelect = document.getElementById("contacto-medio");
-  const contactoIdsDiv = document.getElementById("contacto-ids");
-  contactoSelect.addEventListener("change", function(){
-    contactoIdsDiv.innerHTML = "";
-    const seleccionados = Array.from(contactoSelect.selectedOptions);
-    if(seleccionados.length > 5){ alert("Máximo 5 contactos"); seleccionados[seleccionados.length-1].selected = false; return; }
-    seleccionados.forEach(opt=>{
-      const label = document.createElement("label");
-      label.innerText = `ID/URL para ${opt.value}: `;
-      const input = document.createElement("input");
-      input.type = "text";
-      input.name = "contacto-id";        // <-- importante
-      input.placeholder = `ID o URL para ${opt.value}`;
-      input.required = true;
-      label.appendChild(input);
-      contactoIdsDiv.appendChild(label);
-    });
-  });
-
-  // Fotos dinámicas
-  let fotosCount = 1;
-  document.getElementById("btn-agregar-foto").onclick = function(){
-    if(fotosCount >= 5){ alert("Máximo 5 fotos"); return; }
-    fotosCount++;
-    const input = document.createElement("input");
-    input.type = "file"; input.name = "foto"; input.accept = "image/*"; input.required = true;
-    document.getElementById("fotos-container").appendChild(input);
-  };
-
   // Cargar últimos 5
-  async function cargarUltimos(){
-    const res = await fetch("/api/ultimos");
-    const ultimos = await res.json();
-    const t = document.getElementById("ultimos-table");
-    t.innerHTML = '<tr><th>Fecha</th><th>Comuna</th><th>Sector</th><th>Cantidad</th><th>Tipo</th><th>Edad</th><th>Foto</th></tr>';
-    ultimos.forEach(a=>{
-      const row = t.insertRow();
-      row.insertCell().innerText = a.fechaPub || "";
-      row.insertCell().innerText = a.comuna || "";
-      row.insertCell().innerText = a.sector || "";
-      row.insertCell().innerText = a.cantidad || "";
-      row.insertCell().innerText = a.tipo || "";
-      row.insertCell().innerText = a.edad || "";
-      const c = row.insertCell();
-      if(a.fotos && a.fotos.length>0){
-        const img = document.createElement("img");
-        img.src = a.fotos[0]; img.className = "thumb";
-        c.appendChild(img);
-      }
-    });
-  }
-
-  // Listado paginado (page control)
-  let currentPage = 1;
-  async function cargarListado(page=1){
-    const res = await fetch(`/api/listado?page=${page}`);
-    const payload = await res.json();
-    const listado = payload.avisos || [];
-    document.getElementById("page-num").innerText = page;
-    const table = document.getElementById("listado-table");
-    table.innerHTML = '<tr><th>Fecha Pub</th><th>Fecha Ent</th><th>Comuna</th><th>Sector</th><th>Cantidad</th><th>Tipo</th><th>Edad</th><th>Nombre</th><th>Contacto</th><th>Total fotos</th></tr>';
-    listado.forEach(a=>{
-      const row = table.insertRow();
-      row.style.cursor = "pointer";
-      row.insertCell().innerText = a.fechaPub || "";
-      row.insertCell().innerText = a.fechaEnt || "";
-      row.insertCell().innerText = a.comuna || "";
-      row.insertCell().innerText = a.sector || "";
-      row.insertCell().innerText = a.cantidad || "";
-      row.insertCell().innerText = a.tipo || "";
-      row.insertCell().innerText = a.edad || "";
-      row.insertCell().innerText = a.nombre || "";
-      row.insertCell().innerText = a.contacto || "";
-      row.insertCell().innerText = (a.fotos || []).length;
-      row.onclick = ()=> mostrarDetalle(a.id);
-    });
-
-    // activar botones
-    document.getElementById("prev-page").disabled = !payload.has_prev;
-    document.getElementById("next-page").disabled = !payload.has_next;
-  }
-
-  document.getElementById("prev-page").onclick = ()=>{ if(currentPage>1){ currentPage--; cargarListado(currentPage);} };
-  document.getElementById("next-page").onclick = ()=>{ currentPage++; cargarListado(currentPage); };
-
-  // Mostrar detalle (llama API detalle)
-  async function mostrarDetalle(avisoId){
-    const res = await fetch(`/api/detalle/${avisoId}`);
-    const a = await res.json();
-    mostrarSeccion("detalle");
-    const div = document.getElementById("detalle-info");
-    div.innerHTML = `
-      <p><b>Fecha pub:</b> ${a.fechaPub}</p>
-      <p><b>Fecha ent:</b> ${a.fechaEnt}</p>
-      <p><b>Comuna:</b> ${a.comuna}</p>
-      <p><b>Sector:</b> ${a.sector}</p>
-      <p><b>Cantidad:</b> ${a.cantidad}</p>
-      <p><b>Tipo:</b> ${a.tipo}</p>
-      <p><b>Edad:</b> ${a.edad}</p>
-      <p><b>Nombre:</b> ${a.nombre}</p>
-      <p><b>Contacto:</b> ${a.contacto}</p>
-      <p><b>Descripción:</b> ${a.descripcion || ''}</p>
-      <div id="fotos-detalle"></div>`;
-    const fotosDiv = document.getElementById("fotos-detalle");
-    (a.fotos || []).forEach(src=>{
+  const resUlt = await fetch("/api/ultimos");
+  const ultimos = await resUlt.json();
+  const t = document.getElementById("ultimos-table");
+  ultimos.forEach(a => {
+    const row = t.insertRow();
+    row.insertCell().innerText = a.fechaPub || "";
+    row.insertCell().innerText = a.comuna || "";
+    row.insertCell().innerText = a.sector || "";
+    row.insertCell().innerText = a.cantidad || "";
+    row.insertCell().innerText = a.tipo || "";
+    row.insertCell().innerText = a.edad || "";
+    const c = row.insertCell();
+    if(a.fotos && a.fotos.length > 0) {
       const img = document.createElement("img");
-      img.src = src; img.style.width="320px"; img.style.height="240px"; img.style.margin="5px"; img.style.cursor="pointer";
-      img.onclick = ()=> {
-        const overlay = document.createElement("div");
-        overlay.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:2000;";
-        const imgL = document.createElement("img");
-        imgL.src = src; imgL.style.maxWidth="90%"; imgL.style.maxHeight="90%";
-        const btn = document.createElement("button");
-        btn.innerText="Cerrar"; btn.style.position="absolute"; btn.style.top="20px"; btn.style.right="20px";
-        btn.onclick = ()=> document.body.removeChild(overlay);
-        overlay.appendChild(imgL); overlay.appendChild(btn); document.body.appendChild(overlay);
-      };
-      fotosDiv.appendChild(img);
-    });
+      img.src = a.fotos[0];
+      img.className = "thumb";
+      c.appendChild(img);
+    }
+  });
+});
+</script>
+<script>
+// ======================================
+// COMENTARIOS: Cargar y Agregar
+// ======================================
+
+async function cargarComentarios(avisoId) {
+  const res = await fetch(`/api/comentarios/${avisoId}`);
+  const comentarios = await res.json();
+  const div = document.getElementById("comentarios-lista");
+
+  if (comentarios.length === 0) {
+    div.innerHTML = "<p>No hay comentarios aún.</p>";
+    return;
   }
 
-  // botones detalle -> volver
-  document.getElementById("volver-listado").onclick = ()=> mostrarSeccion("listado");
-  document.getElementById("volver-portada").onclick = ()=> mostrarSeccion("portada");
+  div.innerHTML = "";
+  comentarios.forEach(c => {
+    const p = document.createElement("div");
+    p.style.borderBottom = "1px solid #ddd";
+    p.style.padding = "6px 0";
+    p.innerHTML = `<b>${c.nombre}</b> <small>(${c.fecha})</small><br>${c.texto}`;
+    div.appendChild(p);
+  });
+}
 
-  // inicializar contenido
-  cargarUltimos();
-  cargarListado(currentPage);
+async function agregarComentario(avisoId) {
+  const nombre = document.getElementById("comentario-nombre").value.trim();
+  const texto = document.getElementById("comentario-texto").value.trim();
+  const msg = document.getElementById("comentario-msg");
+  msg.textContent = "";
 
-  // Validaciones cliente: mantén la lógica que necesites aquí (ejemplo simple)
-  const form = document.getElementById("form-aviso");
-  form.addEventListener("submit", function(e){
-    // Aquí puedes verificar campos antes de enviar; si todo OK el formulario se envía normalmente
-    // Ejemplo de validación mínima:
-    const nombre = form.nombre.value;
-    if(!nombre || nombre.length < 3){ alert("Nombre inválido"); e.preventDefault(); return; }
-    // Notar: no llamamos a e.preventDefault() si todo OK para que el form haga POST a /agregar-aviso
+  // Validaciones del lado del cliente
+  if (nombre.length < 3 || nombre.length > 80) {
+    msg.textContent = "El nombre debe tener entre 3 y 80 caracteres.";
+    msg.style.color = "red";
+    return;
+  }
+  if (texto.length < 5) {
+    msg.textContent = "El comentario debe tener al menos 5 caracteres.";
+    msg.style.color = "red";
+    return;
+  }
+
+  const res = await fetch(`/api/comentarios/${avisoId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre, texto })
+  });
+  const data = await res.json();
+
+  if (data.ok) {
+    msg.textContent = data.msg;
+    msg.style.color = "green";
+    document.getElementById("form-comentario").reset();
+    await cargarComentarios(avisoId);
+  } else {
+    msg.textContent = data.error;
+    msg.style.color = "red";
+  }
+}
+
+// Integra con el detalle del aviso
+
+async function mostrarDetalle(avisoId) {
+  const res = await fetch(`/api/detalle/${avisoId}`);
+  const a = await res.json();
+  mostrarSeccion("detalle");
+
+  const div = document.getElementById("detalle-info");
+  div.innerHTML = `
+    <p><b>Fecha pub:</b> ${a.fechaPub}</p>
+    <p><b>Fecha ent:</b> ${a.fechaEnt}</p>
+    <p><b>Comuna:</b> ${a.comuna}</p>
+    <p><b>Sector:</b> ${a.sector}</p>
+    <p><b>Cantidad:</b> ${a.cantidad}</p>
+    <p><b>Tipo:</b> ${a.tipo}</p>
+    <p><b>Edad:</b> ${a.edad}</p>
+    <p><b>Nombre:</b> ${a.nombre}</p>
+    <p><b>Contacto:</b> ${a.contacto}</p>
+    <p><b>Descripción:</b> ${a.descripcion || ''}</p>
+    <div id="fotos-detalle"></div>
+  `;
+
+  // Cargar fotos
+  const fotosDiv = document.getElementById("fotos-detalle");
+  fotosDiv.innerHTML = "";
+  (a.fotos || []).forEach(src => {
+    const img = document.createElement("img");
+    img.src = src;
+    img.style.width = "180px";
+    img.style.margin = "5px";
+    fotosDiv.appendChild(img);
   });
 
-}); // DOMContentLoaded
+  // Cargar comentarios
+  await cargarComentarios(avisoId);
+
+  // Asociar formulario
+  const form = document.getElementById("form-comentario");
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    agregarComentario(avisoId);
+  };
+}
 </script>
+<script>
+// ======================================
+// LISTADO DE AVISOS CON PAGINACIÓN
+// ======================================
+let currentPage = 1;
+
+async function cargarListado(page = 1) {
+  const res = await fetch(`/api/listado?page=${page}`);
+  const data = await res.json();
+
+  const table = document.getElementById("listado-table");
+  table.innerHTML = `
+    <tr>
+      <th>Fecha Pub</th><th>Fecha Ent</th><th>Comuna</th>
+      <th>Sector</th><th>Cantidad</th><th>Tipo</th>
+      <th>Edad</th><th>Nombre</th><th>Contacto</th><th>Total fotos</th>
+    </tr>
+  `;
+
+  data.avisos.forEach(a => {
+    const row = table.insertRow();
+    row.insertCell().innerText = a.fechaPub;
+    row.insertCell().innerText = a.fechaEnt;
+    row.insertCell().innerText = a.comuna;
+    row.insertCell().innerText = a.sector;
+    row.insertCell().innerText = a.cantidad;
+    row.insertCell().innerText = a.tipo;
+    row.insertCell().innerText = a.edad;
+    row.insertCell().innerText = a.nombre;
+    row.insertCell().innerText = a.contacto;
+    row.insertCell().innerText = a.fotos ? a.fotos.length : 0;
+
+    // Click en la fila para ver detalle
+    row.style.cursor = "pointer";
+    row.onclick = () => mostrarDetalle(a.id);
+  });
+
+  // Actualizar número de página y botones
+  document.getElementById("page-num").innerText = page;
+  document.getElementById("prev-page").disabled = !data.has_prev;
+  document.getElementById("next-page").disabled = !data.has_next;
+
+  // Guardar página actual
+  currentPage = page;
+}
+
+// Eventos de paginación
+document.getElementById("prev-page").addEventListener("click", () => {
+  if (currentPage > 1) cargarListado(currentPage - 1);
+});
+document.getElementById("next-page").addEventListener("click", () => {
+  cargarListado(currentPage + 1);
+});
+
+// Cargar listado al entrar en la sección
+document.querySelector('button[onclick*="listado"]').addEventListener("click", () => {
+  mostrarSeccion("listado");
+  cargarListado(1);
+});
+</script>
+
 
 </body>
 </html>
+
